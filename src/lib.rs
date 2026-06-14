@@ -7,6 +7,6 @@ mod aemark {
 
     #[pyfunction]
     fn markdown(s: String) -> String {
-        todo!();
+        mark::markdown(&s)
     }
 }

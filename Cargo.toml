@@ -1,0 +1,22 @@
+[package]
+name = "aemark"
+version = "0.1.1"
+edition = "2024"
+
+[lib]
+name = "aemark"
+crate-type = ["cdylib"]
+
+[workspace]
+resolver = "3"
+members = ["mark"]
+
+[dependencies]
+pyo3 = "0.29.0"
+mark = { path = "mark" }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+

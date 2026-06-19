@@ -1,48 +1,67 @@
-use crate::image::ImgDimension::{Percent, Px};
 use comrak::html::{ChildRendering, Context, dangerous_url};
 use comrak::nodes::NodeLink;
-use regex::Regex;
+use nom::branch::alt;
+use nom::bytes::tag;
+
+use nom::Parser;
+use nom::character::complete::digit1;
+use nom::combinator::{eof, map_res, opt};
 use std::fmt;
 use std::fmt::{Display, Write};
-use std::sync::LazyLock;
 
-const DIMENSION_PATTERN: &str = r"^(?P<width>\d+(%|px)?)(x(?P<height>\d+(%|px)?))?$";
-static DIMENSION_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(DIMENSION_PATTERN).unwrap());
-
-enum ImgDimension<T: Display> {
-    Px(T),
-    Percent(T),
+enum ImgDimension {
+    Px(u32),
+    Percent(u32),
 }
 
-impl<'a> TryFrom<&'a str> for ImgDimension<&'a str> {
-    type Error = ();
-
-    fn try_from(s: &'a str) -> Result<Self, Self::Error> {
-        if s.ends_with('%') {
-            Ok(Percent(s.strip_suffix('%').unwrap()))
-        } else if s.ends_with("px") {
-            Ok(Px(s.strip_suffix("px").unwrap()))
-        } else if s.chars().all(|c| c.is_ascii_digit()) {
-            Ok(Px(s))
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl<T: Display> Display for ImgDimension<T> {
+impl Display for ImgDimension {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Px(n) => write!(f, "{n}px"),
-            Percent(n) => write!(f, "{n}%"),
+            Self::Px(n) => write!(f, "{n}px"),
+            Self::Percent(n) => write!(f, "{n}%"),
         }
     }
 }
 
 struct SithImg<'a> {
     url: &'a str,
-    width: Option<ImgDimension<&'a str>>,
-    height: Option<ImgDimension<&'a str>>,
+    width: Option<ImgDimension>,
+    height: Option<ImgDimension>,
+}
+
+struct ParseDimensionError;
+
+/// Given a querystring that may contain image dimensions,
+/// parse it and return the result
+///
+/// ## Note
+///
+/// If the dimension string is valid, it will always contain the image width.
+/// However, the height is optional.
+fn parse_dimensions(s: &str) -> Result<(ImgDimension, Option<ImgDimension>), ParseDimensionError> {
+    fn parse_dim(dim: &str) -> Result<(&str, ImgDimension), ParseDimensionError> {
+        let parsed = (
+            map_res(digit1::<_, (_, _)>, str::parse),
+            opt(alt((eof, tag("%"), tag("px")))),
+        )
+            .parse(dim);
+        let Ok((remaining, (val, unit))) = parsed else {
+            return Err(ParseDimensionError);
+        };
+        match unit {
+            Some("%") => Ok((remaining, ImgDimension::Percent(val))),
+            None | Some("px") | Some("") => Ok((remaining, ImgDimension::Px(val))),
+            _ => Err(ParseDimensionError),
+        }
+    }
+    let (remaining, width) = parse_dim(s)?;
+    let height = if let Some(stripped) = remaining.strip_prefix("x") {
+        Some(parse_dim(stripped)?.1)
+    } else {
+        None
+    };
+
+    Ok((width, height))
 }
 
 impl<'a> From<&'a str> for SithImg<'a> {
@@ -50,16 +69,12 @@ impl<'a> From<&'a str> for SithImg<'a> {
         // if the url contained dimension instructions, remove the query part
         // else, leave the url untouched
         if let Some((url, query)) = s.rsplit_once('?')
-            && let Some(dimensions) = DIMENSION_RE.captures(query)
+            && let Ok((width, height)) = parse_dimensions(query)
         {
             Self {
                 url,
-                width: dimensions
-                    .name("width")
-                    .and_then(|i| i.as_str().try_into().ok()),
-                height: dimensions
-                    .name("height")
-                    .and_then(|i| i.as_str().try_into().ok()),
+                width: Some(width),
+                height,
             }
         } else {
             Self {

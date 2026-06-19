@@ -17,8 +17,6 @@ fn options<'a>() -> Options<'a> {
             footnotes: true,
             description_lists: true,
             multiline_block_quotes: true,
-            math_dollars: true,
-            math_code: true,
             shortcodes: true,
             underline: true,
             subscript: true,
@@ -58,7 +56,8 @@ pub fn markdown(s: &str) -> String {
         }
     }
 
-    let mut html = String::new();
+    // html result will be at least as long as md input, so let's allocate that
+    let mut html = String::with_capacity(s.len());
     CustomFormatter::format_document(root, &options, &mut html).unwrap();
     html
 }

@@ -17,6 +17,7 @@ mark = { path = "mark" }
 
 [profile.release]
 strip = true
-lto = true
+panic = "abort"
+lto = "fat"
 codegen-units = 1
 

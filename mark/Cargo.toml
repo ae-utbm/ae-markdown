@@ -1,9 +1,9 @@
 [package]
 name = "mark"
 description = "The markdown logic of the project"
-version = "0.1.0"
+version = "0.1.4"
 edition = "2024"
 
 [dependencies]
-comrak = "0.52.0"
+comrak = "0.56.0"
 nom = "8"

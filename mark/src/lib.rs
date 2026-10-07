@@ -10,7 +10,6 @@ fn options<'a>() -> Options<'a> {
     Options {
         extension: Extension {
             strikethrough: true,
-            tagfilter: true,
             table: true,
             autolink: true,
             superscript: true,

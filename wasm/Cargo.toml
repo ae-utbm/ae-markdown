@@ -1,6 +1,6 @@
 [package]
 name = "wasm"
-version = "0.1.1"
+version = "0.1.4"
 authors = ["Thomas Girod <thgirod@hotmail.com>"]
 edition = "2018"
 
@@ -11,7 +11,7 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.84"
+wasm-bindgen = "0.2.129"
 mark = { path = "../mark" }
 
 [profile.release]
